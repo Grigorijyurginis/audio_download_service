@@ -2,7 +2,7 @@
 name = "test-task"
 version = "0.1.0"
 description = ""
-authors = ["Grigory Yurginis <g.urginis@anviovr.com>"]
+authors = ["Grigory Yurginis <grigorijiurginis@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
