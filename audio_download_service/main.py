@@ -1,32 +1,26 @@
-import os
+from typing import Annotated
 
-from fastapi import FastAPI
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import OperationalError
-from sqlalchemy import text
+from fastapi import FastAPI, Depends
+from sqlalchemy.future import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from audio_download_service.models import User
+from database import engine, Base, get_async_session
 
 app = FastAPI()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-engine = create_async_engine(DATABASE_URL, echo=True)
-AsyncSession = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+SessionDep = Annotated[AsyncSession, Depends(get_async_session)]
 
 
-@app.get("/")
-def read_root():
-    return {"message": "Hello, World!"}
+@app.on_event("startup")
+async def on_startup():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
 
 
-@app.get("/db_check")
-async def db_check():
-    return await check_db_connection()
-
-
-async def check_db_connection():
-    try:
-        async with engine.connect() as connection:
-            await connection.execute(text("SELECT 1"))
-            return {"db_result": "Connection successful"}
-    except OperationalError as e:
-        return {"db_result": "Connection failed", "error": str(e)}
+@app.get("/users")
+async def get_users(session: SessionDep):
+    result = await session.execute(select(User))
+    users = result.scalars().first()
+    return users
